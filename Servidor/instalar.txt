@@ -1,0 +1,5 @@
+instalar python
+instalar flask -- pip install Flask
+instalar mongoDB para python -- pip install pymongo
+instalar pymongo -- pip install pymongo
+

@@ -1,0 +1,8 @@
+Para buildear uno de los proyectos con dockerfile ejecutar:
+docker build -t angular_app . 
+
+Para correr el contenedor del cocker-compose.yaml:
+docker-compose up
+
+Para entrar a mongoDB con datos del docker:
+<IP_LOCAL>:puerto
