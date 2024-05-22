@@ -4,6 +4,7 @@ from pymongo import MongoClient
 from bson import ObjectId
 from flask_cors import CORS
 
+import pymongo
 import logging
 
 pagos_bp = Blueprint('pagos', __name__)
@@ -17,7 +18,7 @@ def obtener_conexion_db():
 @pagos_bp.route('/pago/<string:idEnvio>', methods=['GET'])
 def get_pagos(idEnvio):
     db = obtener_conexion_db()
-    pagos = list(db['pagos'].find({"idEnvio": idEnvio}))
+    pagos = list(db['pagos'].find({"idEnvio": idEnvio}).sort("fechaPago", pymongo.DESCENDING))
     
     for pago in pagos:
         pago['_id'] = str(pago['_id'])
