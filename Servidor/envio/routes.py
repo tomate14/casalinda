@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from pymongo import MongoClient
 from bson import ObjectId
 from flask_cors import CORS
-
+import pymongo
 
 envio_bp = Blueprint('envio', __name__)
 
@@ -21,8 +21,8 @@ def obtener_envios():
     coleccion_envios = db['envios']
     coleccion_clientes = db['clientes']
 
-    envios = list(coleccion_envios.find())
-    clientes = list(coleccion_clientes.find())
+    envios = list(coleccion_envios.find().sort("fechaPedido", pymongo.DESCENDING))
+    clientes = list(coleccion_clientes.find().sort("dni", pymongo.ASCENDING))
     for cliente in clientes:
         cliente['_id'] = str(cliente['_id'])
     for envio in envios:
@@ -36,11 +36,12 @@ def obtener_envios():
 @envio_bp.route('/envio/<int:dniCliente>', methods=['GET'])
 def get_envios_por_dniCliente(dniCliente):
     db = obtener_conexion_db()
-    envios = list(db['envios'].find({"dniCliente": dniCliente}))
+    envios = list(db['envios'].find({"dniCliente": dniCliente}).sort("fechaPedido", pymongo.DESCENDING))
     
     for envio in envios:
         envio['_id'] = str(envio['_id'])
     return jsonify(envios), 200
+
 # Servicio POST para /envio
 @envio_bp.route('/envio', methods=['POST'])
 def crear_envio():
