@@ -11,7 +11,7 @@ cliente_bp = Blueprint('cliente', __name__)
 def obtener_conexion_db():
     client = MongoClient(os.getenv("MONGO_URI"))
     logging.info('Conectando a %s', os.getenv("MONGO_URI"))
-    db = client['envios']
+    db = client['pedidos']
     return db
 
 @cliente_bp.route('/cliente/<int:dni>', methods=['GET'])
