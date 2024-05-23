@@ -12,13 +12,13 @@ pagos_bp = Blueprint('pagos', __name__)
 def obtener_conexion_db():
     client = MongoClient(os.getenv("MONGO_URI"))
     logging.info('Conectando a %s', os.getenv("MONGO_URI"))
-    db = client['envios']
+    db = client['pedidos']
     return db
 
-@pagos_bp.route('/pago/<string:idEnvio>', methods=['GET'])
-def get_pagos(idEnvio):
+@pagos_bp.route('/pago/<string:idPedido>', methods=['GET'])
+def get_pagos(idPedido):
     db = obtener_conexion_db()
-    pagos = list(db['pagos'].find({"idEnvio": idEnvio}).sort("fechaPago", pymongo.DESCENDING))
+    pagos = list(db['pagos'].find({"idPedido": idPedido}).sort("fechaPago", pymongo.DESCENDING))
     
     for pago in pagos:
         pago['_id'] = str(pago['_id'])
@@ -38,14 +38,14 @@ def delete_pagos(idPago):
     else:
         return jsonify({"message": f"No se elimino el pago con id {idPago}"}), 404
 
-##@pagos_bp.route('/pago/<string:idEnvio>', methods=['DELETE'])
-def delete_pagos_by_idenvio(idEnvio):
+##@pagos_bp.route('/pago/<string:idpedido>', methods=['DELETE'])
+def delete_pagos_by_idpedido(idpedido):
     db = obtener_conexion_db()
-    result = db['pagos'].delete_many({"idEnvio": idEnvio})
+    result = db['pagos'].delete_many({"idpedido": idpedido})
     if result.deleted_count > 0:
-        return jsonify({"message": f"Se eliminaron {result.deleted_count} pagos con idEnvio {idEnvio}"}), 200
+        return jsonify({"message": f"Se eliminaron {result.deleted_count} pagos con idpedido {idpedido}"}), 200
     else:
-        return jsonify({"message": f"No se encontraron pagos con idEnvio {idEnvio}"}), 404
+        return jsonify({"message": f"No se encontraron pagos con idpedido {idpedido}"}), 404
 
 @pagos_bp.route('/pago', methods=['POST'])
 def create_cliente():
@@ -53,7 +53,7 @@ def create_cliente():
     if not nuevo_pago:
         return jsonify({"error": "No se proporcionaron datos"}), 400
     
-    if "idEnvio" not in nuevo_pago :
+    if "idPedido" not in nuevo_pago :
         return jsonify({"error": "Datos incompletos"}), 400
 
     db = obtener_conexion_db()

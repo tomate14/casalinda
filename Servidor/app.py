@@ -3,7 +3,7 @@ import logging
 from flask import Flask
 from flask_cors import CORS
 from cliente.routes import cliente_bp
-from envio.routes import envio_bp
+from pedido.routes import pedido_bp
 from pagos.routes import pagos_bp
 
 # Configuración del registro de logs
@@ -14,7 +14,7 @@ CORS(app)
 
 # Registrar los Blueprints
 app.register_blueprint(cliente_bp)
-app.register_blueprint(envio_bp)
+app.register_blueprint(pedido_bp)
 app.register_blueprint(pagos_bp)
 
 if __name__ == '__main__':
