@@ -9,3 +9,10 @@ docker-compose up
 
 Para entrar a mongoDB con datos del docker:
 <IP_LOCAL>:puerto
+
+Para hacer un dump de la db:
+mongodump --db <nombre coleccion> --out /data/db
+
+Para hacer un restore
+# Primero tengo que copiar los datos del buckup en la carpeta compartida fisica y pegarlos dentro de /restore
+# Ejecutar mongorestore --host mongodb --drop /data/db/restore

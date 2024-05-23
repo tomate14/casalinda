@@ -7,7 +7,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - C:\Users\Maxi\Desktop\casalinda\datos:/data/db
+      - C:\casalinda\datos:/data/db
 
   flask:
     build:
@@ -30,6 +30,23 @@ services:
       - "4200:4200"
     depends_on:
       - flask
+  backup:
+    build:
+      context: C:\Users\Maxi\Desktop\casalinda\buckup
+      dockerfile: Dockerfile
+    container_name: backup_mongodb
+    volumes:
+      - C:\casalinda\buckup\data:/backup
+    depends_on:
+      - mongodb
+  #restore:
+    #image: mongo:latest
+    #container_name: restore_mongodb
+    #command: sh -c "mongorestore --host mongodb --drop /backup/2024-05-23-14-35"
+    #volumes:
+      #- ./backup:/backup
+    #depends_on:
+      #- mongodb
 volumes:
   mongo-data:
   
