@@ -3,9 +3,13 @@ from flask import Blueprint, request, jsonify
 from pymongo import MongoClient
 from bson import ObjectId
 from flask_cors import CORS
+from datetime import datetime, timedelta
 
 import pymongo
 import logging
+# Configuración de logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 pagos_bp = Blueprint('pagos', __name__)
 
@@ -61,6 +65,28 @@ def create_cliente():
     resultado = coleccion_pagos.insert_one(nuevo_pago)
     nuevo_pago["_id"] = str(resultado.inserted_id)
     return jsonify(nuevo_pago), 201
+# Servicios de caja
+@pagos_bp.route('/pago/caja/<string:fechaInicio>/<string:fechaFin>', methods=['GET'])
+def get_pagos_por_fecha(fechaInicio, fechaFin):
+    try:
+       
+        logger.info('Fecha inicio: %s', fechaInicio)
+        logger.info('Fecha fin: %s', fechaFin)
+    except ValueError:
+        return jsonify({"error": "Fecha no válida"}), 400
+
+    db = obtener_conexion_db()
+    pagos = list(db['pagos'].find({
+        "fechaPago": {
+            "$gte": fechaInicio,
+            "$lt": fechaFin
+        }
+    }).sort("fechaPago", pymongo.ASCENDING))
+
+    for pago in pagos:
+        pago['_id'] = str(pago['_id'])
+    
+    return jsonify(pagos), 200
 
 if __name__ == 'pagosService':
     app.run(debug=True)
