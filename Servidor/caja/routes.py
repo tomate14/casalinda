@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from pymongo import MongoClient
 from bson import ObjectId
 from flask_cors import CORS
-
+import pymongo
 import logging
 
 caja_bp = Blueprint('caja', __name__)
@@ -28,22 +28,26 @@ def create_caja():
     db['caja'].insert_one(data)
     return jsonify({"message": "Registro creado exitosamente"}), 201
 
-@caja_bp.route('/caja/<string:fecha>', methods=['GET'])
-def get_caja_by_date(fecha):
-
-    logging.info('Fecha inicio: %s', fecha)
-
+@caja_bp.route('/caja/<string:fechaInicio>/<string:fechaFin>', methods=['GET'])
+def get_caja_by_date(fechaInicio,fechaFin):
+    try:
+        logging.info('Fecha inicio: %s', fechaInicio)
+        logging.info('Fecha fin: %s', fechaFin)
+    except ValueError:
+        return jsonify({"error": "Fecha no válida"}), 400
+        
     db = obtener_conexion_db()
+    cajas = list(db['caja'].find({
+        "fecha": {
+            "$gte": fechaInicio,
+            "$lt": fechaFin
+        }
+    }).sort("fecha", pymongo.ASCENDING))
 
-    caja = db['caja'].find_one({"fecha": fecha })
-
-    if caja is None:
-        logging.warning('No hay caja para el dia de la fecha')
-        return jsonify({'error': 'No hay caja para el dia de la fecha'}), 404
+    for caja in cajas:
+        caja['_id'] = str(caja['_id'])
     
-    caja['_id'] = str(caja['_id'])
-
-    return jsonify(caja), 200
+    return jsonify(cajas), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
