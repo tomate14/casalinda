@@ -52,7 +52,7 @@ def delete_pagos_by_idpedido(idpedido):
         return jsonify({"message": f"No se encontraron pagos con idpedido {idpedido}"}), 404
 
 @pagos_bp.route('/pago', methods=['POST'])
-def create_cliente():
+def create_pago():
     nuevo_pago = request.get_json()
     if not nuevo_pago:
         return jsonify({"error": "No se proporcionaron datos"}), 400
@@ -87,6 +87,28 @@ def get_pagos_por_fecha(fechaInicio, fechaFin):
         pago['_id'] = str(pago['_id'])
     
     return jsonify(pagos), 200
+
+@pagos_bp.route('/pago/<string:idPago>', methods=['PUT'])
+def update_pago(idPago):
+    pago_actualizado = request.get_json()
+    if not pago_actualizado:
+        return jsonify({"error": "No se proporcionaron datos"}), 400
+    
+    db = obtener_conexion_db()
+    coleccion_pagos = db['pagos']
+    
+    pago_existente = coleccion_pagos.find_one({"_id": ObjectId(idPago)})
+    if pago_existente is None:
+        return jsonify({'error': 'pago no encontrado'}), 404
+
+    # Actualizar pago existente con los nuevos datos
+    coleccion_pagos.update_one({"_id": ObjectId(idPago)}, {"$set": pago_actualizado})
+
+    # Obtener el pago actualizado
+    pago_actualizado = coleccion_pagos.find_one({"_id": ObjectId(idPago)})
+    pago_actualizado['_id'] = str(pago_actualizado['_id'])  # Convertir ObjectId a string antes de devolver la respuesta
+    
+    return jsonify(pago_actualizado), 200
 
 if __name__ == 'pagosService':
     app.run(debug=True)
