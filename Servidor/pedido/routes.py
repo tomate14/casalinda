@@ -133,6 +133,27 @@ def actualizar_pedido(idPedido):
     else:
         return jsonify({"message": f"No se encontró el envío con idPedido {idPedido}"}), 404
 
+@pedido_bp.route('/pedido/pedidos-vencidos/<string:fechaDesde>/<int:tipoPedido>', methods=['GET'])
+def get_pedidos_vencidos(fechaDesde, tipoPedido):
+    
+    db = obtener_conexion_db()
+    pedidos = list(db['pedidos'].find({"fechaPedido": {"$lt": fechaDesde}, "estado":"PENDIENTE", "tipoPedido": tipoPedido }).sort("fechaPedido", pymongo.ASCENDING))
+    
+    # Obtener todos los clientes
+    response = get_all_clientes()
+    clientes = list(db['clientes'].find().sort("dni", pymongo.ASCENDING))
+    
+    for cliente in clientes:
+        cliente['_id'] = str(cliente['_id'])
+
+    for pedido in pedidos:
+        pedido['_id'] = str(pedido['_id'])
+        cliente = next((c for c in clientes if c['dni'] == pedido['dniCliente']), None)
+        if cliente:
+            pedido['nombreCliente'] = cliente['nombre']
+
+    return jsonify(pedidos), 200
+
 # Esto permit
 if __name__ == 'pedidoservice':
     app.run(debug=True)
