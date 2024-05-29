@@ -1,9 +1,23 @@
 import os
+import sys
+
 from flask import Blueprint, request, jsonify
 from pymongo import MongoClient
 from bson import ObjectId
 from flask_cors import CORS
 import pymongo
+
+import logging
+# Configuración de logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Agrega el directorio del paquete cliente al PYTHONPATH
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'cliente')))
+
+# Importa la función get_all_clientes del archivo cliente.py
+from cliente.routes import get_all_clientes
+
 
 pedido_bp = Blueprint('pedido', __name__)
 
@@ -42,6 +56,25 @@ def get_pedidos_por_dniCliente(dniCliente):
     
     for pedido in pedidos:
         pedido['_id'] = str(pedido['_id'])
+    return jsonify(pedidos), 200
+
+@pedido_bp.route('/pedido/tipo-pedido/<int:tipoPedido>', methods=['GET'])
+def get_pedidos_por_tipo_pedido(tipoPedido):
+    db = obtener_conexion_db()
+    pedidos = list(db['pedidos'].find({"tipoPedido": tipoPedido}).sort("fechaPedido", pymongo.DESCENDING))
+    clientes = list(db['clientes'].find().sort("dni", pymongo.ASCENDING))
+    
+    for cliente in clientes:
+        cliente['_id'] = str(cliente['_id'])
+
+    for pedido in pedidos:
+        pedido['_id'] = str(pedido['_id'])
+        logging.info('Pedido  %s', pedido)
+        cliente = next((c for c in clientes if c['dni'] == pedido['dniCliente']), None)
+        logging.info('Cliente  %s', cliente)
+        if cliente:
+            pedido['nombreCliente'] = cliente['nombre']
+
     return jsonify(pedidos), 200
 
 # Servicio POST para /pedido
