@@ -30,8 +30,13 @@ def get_cliente(dni):
 def get_all_clientes():
     db = obtener_conexion_db()
     clientes = list(db['clientes'].find())
+
+    # Obtener lista de deudores
+    dni_deudores = get_clientes_deudores()
+
     for cliente in clientes:
         cliente['_id'] = str(cliente['_id'])
+        cliente['esDeudor'] = cliente['dni'] in dni_deudores
     return jsonify(clientes), 200
 
 @cliente_bp.route('/cliente', methods=['POST'])
@@ -71,5 +76,17 @@ def update_cliente(idCliente):
     
     return jsonify(cliente_actualizado), 200
     
+def get_clientes_deudores():
+    db = obtener_conexion_db()
+    pedidos = db['pedidos']
+    
+    # Buscar pedidos pendientes
+    pedidos_pendientes = pedidos.find({'estado': 'PENDIENTE'})
+    
+    # Obtener los DNI de los clientes deudores
+    dni_deudores = [pedido['dniCliente'] for pedido in pedidos_pendientes]
+    
+    return dni_deudores
+
 if __name__ == 'clienteService':
     app.run(debug=True)

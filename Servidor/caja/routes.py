@@ -98,7 +98,7 @@ def cierre_caja(fechaInicio, fechaFin):
             ingresos += valor
 
     cierre_caja_doc = {
-        "fecha": fecha_fin,
+        "fecha": fecha_inicio,
         "contado": contado,
         "tarjeta": tarjeta,
         "cuentaDni": cuentaDni,
