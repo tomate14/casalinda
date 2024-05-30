@@ -1,4 +1,5 @@
 import os
+import re
 from flask import Blueprint, request, jsonify
 from pymongo import MongoClient
 from bson import ObjectId
@@ -55,16 +56,37 @@ def delete_pagos_by_idpedido(idpedido):
 def create_pago():
     nuevo_pago = request.get_json()
     if not nuevo_pago:
-        return jsonify({"error": "No se proporcionaron datos"}), 400
+        return jsonify({"message": "No se proporcionaron datos"}), 400
     
     if "idPedido" not in nuevo_pago :
-        return jsonify({"error": "Datos incompletos"}), 400
+        return jsonify({"message": "Datos incompletos"}), 400
 
     db = obtener_conexion_db()
-    coleccion_pagos = db['pagos']
-    resultado = coleccion_pagos.insert_one(nuevo_pago)
-    nuevo_pago["_id"] = str(resultado.inserted_id)
-    return jsonify(nuevo_pago), 201
+
+    nueva_fecha = reemplazar_t(nuevo_pago["fechaPago"])
+
+    # Consulta de agregación para obtener la última fecha de caja cerrada
+    pipeline = [
+        {"$group": {"_id": "$fecha"}},
+        {"$sort": {"_id": pymongo.DESCENDING}},
+        {"$limit": 1}
+    ]
+    
+    ultima_fecha = db['caja'].aggregate(pipeline)
+    ultima_fecha = next(ultima_fecha, None)
+    if ultima_fecha:
+        ultima_fecha = ultima_fecha['_id']
+
+    logging.info('Ultima fecha: %s', ultima_fecha)
+    logging.info('Fecha Pago: %s', nueva_fecha)
+
+    if ultima_fecha == nueva_fecha :
+        return jsonify({"message": f"No se pueden agregar datos porque la caja del dia ya fue cerrada"}), 404
+    else:
+        coleccion_pagos = db['pagos']
+        resultado = coleccion_pagos.insert_one(nuevo_pago)
+        nuevo_pago["_id"] = str(resultado.inserted_id)
+        return jsonify(nuevo_pago), 201
 # Servicios de caja
 @pagos_bp.route('/pago/caja/<string:fechaInicio>/<string:fechaFin>', methods=['GET'])
 def get_pagos_por_fecha(fechaInicio, fechaFin):
@@ -73,7 +95,7 @@ def get_pagos_por_fecha(fechaInicio, fechaFin):
         logger.info('Fecha inicio: %s', fechaInicio)
         logger.info('Fecha fin: %s', fechaFin)
     except ValueError:
-        return jsonify({"error": "Fecha no válida"}), 400
+        return jsonify({"message": "Fecha no válida"}), 400
 
     db = obtener_conexion_db()
     pagos = list(db['pagos'].find({
@@ -91,15 +113,16 @@ def get_pagos_por_fecha(fechaInicio, fechaFin):
 @pagos_bp.route('/pago/<string:idPago>', methods=['PUT'])
 def update_pago(idPago):
     pago_actualizado = request.get_json()
+
     if not pago_actualizado:
-        return jsonify({"error": "No se proporcionaron datos"}), 400
-    
+        return jsonify({"message": "No se proporcionaron datos"}), 400
+
     db = obtener_conexion_db()
     coleccion_pagos = db['pagos']
     
     pago_existente = coleccion_pagos.find_one({"_id": ObjectId(idPago)})
     if pago_existente is None:
-        return jsonify({'error': 'pago no encontrado'}), 404
+        return jsonify({'message': 'pago no encontrado'}), 404
 
     # Actualizar pago existente con los nuevos datos
     coleccion_pagos.update_one({"_id": ObjectId(idPago)}, {"$set": pago_actualizado})
@@ -109,6 +132,13 @@ def update_pago(idPago):
     pago_actualizado['_id'] = str(pago_actualizado['_id'])  # Convertir ObjectId a string antes de devolver la respuesta
     
     return jsonify(pago_actualizado), 200
+
+
+def reemplazar_t(fecha):
+    # Utilizar una expresión regular para buscar la parte derecha de la T
+    nueva_fecha = re.sub(r'T\d{2}:\d{2}:\d{2}.\d{3}-\d{2}:\d{2}$', 'T00:00:00.000-03:00', fecha)
+    logging.info('Nueva fecha a checkear %s', nueva_fecha)
+    return nueva_fecha
 
 if __name__ == 'pagosService':
     app.run(debug=True)

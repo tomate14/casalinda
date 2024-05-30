@@ -82,10 +82,10 @@ def get_pedidos_por_tipo_pedido(tipoPedido):
 def crear_pedido():
     nuevo_pedido = request.get_json()
     if not nuevo_pedido:
-        return jsonify({"error": "No se proporcionaron datos"}), 400
+        return jsonify({"message": "No se proporcionaron datos"}), 400
     
     if "dniCliente" not in nuevo_pedido:
-        return jsonify({"error": "Datos incompletos"}), 400
+        return jsonify({"message": "Datos incompletos"}), 400
 
     db = obtener_conexion_db()
     coleccion_pedidos = db['pedidos']

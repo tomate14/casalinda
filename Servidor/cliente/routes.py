@@ -22,7 +22,7 @@ def get_cliente(dni):
     
     if cliente is None:
         logging.warning('Cliente con DNI %s no encontrado', dni)
-        return jsonify({'error': 'Cliente no encontrado'}), 404
+        return jsonify({'message': 'Cliente no encontrado'}), 404
     cliente['_id'] = str(cliente['_id'])  # Convertir ObjectId a string antes de devolver la respuesta
     return jsonify(cliente)
 
@@ -43,10 +43,10 @@ def get_all_clientes():
 def create_cliente():
     nuevo_cliente = request.get_json()
     if not nuevo_cliente:
-        return jsonify({"error": "No se proporcionaron datos"}), 400
+        return jsonify({"message": "No se proporcionaron datos"}), 400
     
     if "dni" not in nuevo_cliente:
-        return jsonify({"error": "Datos incompletos"}), 400
+        return jsonify({"message": "Datos incompletos"}), 400
 
     db = obtener_conexion_db()
     coleccion_clientes = db['clientes']
@@ -58,14 +58,14 @@ def create_cliente():
 def update_cliente(idCliente):
     cliente_actualizado = request.get_json()
     if not cliente_actualizado:
-        return jsonify({"error": "No se proporcionaron datos"}), 400
+        return jsonify({"message": "No se proporcionaron datos"}), 400
     
     db = obtener_conexion_db()
     coleccion_clientes = db['clientes']
     
     cliente_existente = coleccion_clientes.find_one({"_id": ObjectId(idCliente)})
     if cliente_existente is None:
-        return jsonify({'error': 'Cliente no encontrado'}), 404
+        return jsonify({'message': 'Cliente no encontrado'}), 404
 
     # Actualizar cliente existente con los nuevos datos
     coleccion_clientes.update_one({"_id": ObjectId(idCliente)}, {"$set": cliente_actualizado})

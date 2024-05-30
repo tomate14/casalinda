@@ -21,11 +21,11 @@ def create_caja():
     db = obtener_conexion_db()
     data = request.get_json()
     if not data:
-        return jsonify({"error": "No se proporcionaron datos"}), 400
+        return jsonify({"message": "No se proporcionaron datos"}), 400
     
     required_fields = ["fecha", "contado", "tarjeta", "cuentaDni"]
     if not all(field in data for field in required_fields):
-        return jsonify({"error": "Datos incompletos"}), 400
+        return jsonify({"message": "Datos incompletos"}), 400
 
     db['caja'].insert_one(data)
     return jsonify({"message": "Registro creado exitosamente"}), 201
@@ -36,7 +36,7 @@ def get_caja_by_date(fechaInicio,fechaFin):
         logging.info('Fecha inicio: %s', fechaInicio)
         logging.info('Fecha fin: %s', fechaFin)
     except ValueError:
-        return jsonify({"error": "Fecha no válida"}), 400
+        return jsonify({"message": "Fecha no válida"}), 400
         
     db = obtener_conexion_db()
     cajas = list(db['caja'].find({
@@ -58,13 +58,13 @@ def cierre_caja(fechaInicio, fechaFin):
         fecha_inicio = fechaInicio
         fecha_fin = fechaFin
     except ValueError:
-        return jsonify({"error": "Fecha no válida"}), 400
+        return jsonify({"message": "Fecha no válida"}), 400
 
     db = obtener_conexion_db()
 
     # Verificar si ya existe un cierre de caja con la misma fecha
     if db['caja'].find_one({"fecha": fecha_fin}):
-        return jsonify({"error": "Ya existe un cierre de caja para la fecha proporcionada"}), 400
+        return jsonify({"message": "Ya existe un cierre de caja para la fecha proporcionada"}), 400
 
     try:
         pagos = list(db['pagos'].find({
@@ -75,7 +75,7 @@ def cierre_caja(fechaInicio, fechaFin):
         }))
     except Exception as e:
         logging.error("Error al consultar la base de datos: %s", str(e))
-        return jsonify({"error": "Error al consultar la base de datos"}), 500
+        return jsonify({"message": "Error al consultar la base de datos"}), 500
 
     contado = 0
     tarjeta = 0
@@ -114,13 +114,13 @@ def cierre_caja(fechaInicio, fechaFin):
         cierre_caja_doc['_id'] = str(cierre_caja_doc['_id'])
     except Exception as e:
         logging.error("Error al insertar el documento en la colección 'caja': %s", str(e))
-        return jsonify({"error": "Error al guardar el cierre de caja"}), 500
+        return jsonify({"message": "Error al guardar el cierre de caja"}), 500
 
 
-    return jsonify({"message": f"Cierre de caja exitoso para el dia {fechaInicio}"}), 200
+    return jsonify({"message": f"Cierre de caja exitoso"}), 200
 
-@caja_bp.route('/caja/ultimas-cerradas/<int:limite>', methods=['GET'])
-def get_caja_no_cerrada(limite):
+@caja_bp.route('/caja/ultima-cerrada', methods=['GET'])
+def get_caja_no_cerrada():
         
     db = obtener_conexion_db()
 
@@ -128,15 +128,15 @@ def get_caja_no_cerrada(limite):
     pipeline = [
         {"$group": {"_id": "$fecha"}},
         {"$sort": {"_id": pymongo.DESCENDING}},
-        {"$limit": limite}
+        {"$limit": 1}
     ]
     
-    ultimas_10_fechas = list(db['caja'].aggregate(pipeline))
+    ultima_fecha = list(db['caja'].aggregate(pipeline))
     
     # Extraer solo las fechas del resultado
-    ultimas_10_fechas = [fecha["_id"] for fecha in ultimas_10_fechas]
+    ultima_fecha = [fecha["_id"] for fecha in ultima_fecha]
 
-    return jsonify(ultimas_10_fechas), 200
+    return jsonify(ultima_fecha), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
