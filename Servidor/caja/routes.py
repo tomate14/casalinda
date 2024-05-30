@@ -3,14 +3,16 @@ from flask import Blueprint, request, jsonify
 from pymongo import MongoClient
 from bson import ObjectId
 from flask_cors import CORS
+from datetime import datetime
 import pymongo
 import logging
+
 
 caja_bp = Blueprint('caja', __name__)
 
 def obtener_conexion_db():
-    client = MongoClient(os.getenv("MONGO_URI"))
-    logging.info('Conectando a %s', os.getenv("MONGO_URI"))
+    client = MongoClient("mongodb://192.168.0.108:27017/pedidos")
+    logging.info('Conectando a %s', "mongodb://192.168.0.108:27017/pedidos")
     db = client['pedidos']
     return db
 
@@ -72,7 +74,7 @@ def cierre_caja(fechaInicio, fechaFin):
             }
         }))
     except Exception as e:
-        logger.error("Error al consultar la base de datos: %s", str(e))
+        logging.error("Error al consultar la base de datos: %s", str(e))
         return jsonify({"error": "Error al consultar la base de datos"}), 500
 
     contado = 0
@@ -111,10 +113,30 @@ def cierre_caja(fechaInicio, fechaFin):
         db['caja'].insert_one(cierre_caja_doc)
         cierre_caja_doc['_id'] = str(cierre_caja_doc['_id'])
     except Exception as e:
-        logger.error("Error al insertar el documento en la colección 'caja': %s", str(e))
+        logging.error("Error al insertar el documento en la colección 'caja': %s", str(e))
         return jsonify({"error": "Error al guardar el cierre de caja"}), 500
 
 
     return jsonify({"message": f"Cierre de caja exitoso para el dia {fechaInicio}"}), 200
+
+@caja_bp.route('/caja/ultimas-cerradas/<int:limite>', methods=['GET'])
+def get_caja_no_cerrada(limite):
+        
+    db = obtener_conexion_db()
+
+    # Consulta de agregación para obtener las últimas 10 fechas ordenadas de manera descendente
+    pipeline = [
+        {"$group": {"_id": "$fecha"}},
+        {"$sort": {"_id": pymongo.DESCENDING}},
+        {"$limit": limite}
+    ]
+    
+    ultimas_10_fechas = list(db['caja'].aggregate(pipeline))
+    
+    # Extraer solo las fechas del resultado
+    ultimas_10_fechas = [fecha["_id"] for fecha in ultimas_10_fechas]
+
+    return jsonify(ultimas_10_fechas), 200
+
 if __name__ == '__main__':
     app.run(debug=True)
