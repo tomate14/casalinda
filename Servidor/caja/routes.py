@@ -11,24 +11,10 @@ import logging
 caja_bp = Blueprint('caja', __name__)
 
 def obtener_conexion_db():
-    client = MongoClient("mongodb://192.168.0.108:27017/pedidos")
-    logging.info('Conectando a %s', "mongodb://192.168.0.108:27017/pedidos")
+    client = MongoClient(os.getenv("MONGO_URI"))
+    logging.info('Conectando a %s', os.getenv("MONGO_URI"))
     db = client['pedidos']
     return db
-
-@caja_bp.route('/caja', methods=['POST'])
-def create_caja():
-    db = obtener_conexion_db()
-    data = request.get_json()
-    if not data:
-        return jsonify({"message": "No se proporcionaron datos"}), 400
-    
-    required_fields = ["fecha", "contado", "tarjeta", "cuentaDni"]
-    if not all(field in data for field in required_fields):
-        return jsonify({"message": "Datos incompletos"}), 400
-
-    db['caja'].insert_one(data)
-    return jsonify({"message": "Registro creado exitosamente"}), 201
 
 @caja_bp.route('/caja/<string:fechaInicio>/<string:fechaFin>', methods=['GET'])
 def get_caja_by_date(fechaInicio,fechaFin):

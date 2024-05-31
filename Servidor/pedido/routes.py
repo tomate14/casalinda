@@ -137,8 +137,9 @@ def actualizar_pedido(idPedido):
 def get_pedidos_vencidos(fechaDesde, tipoPedido):
     
     db = obtener_conexion_db()
+    logging.info(f"Fecha desde {fechaDesde}")
     pedidos = list(db['pedidos'].find({"fechaPedido": {"$lt": fechaDesde}, "estado":"PENDIENTE", "tipoPedido": tipoPedido }).sort("fechaPedido", pymongo.ASCENDING))
-    
+    logging.info("pedidos {pedidos}")
     # Obtener todos los clientes
     response = get_all_clientes()
     clientes = list(db['clientes'].find().sort("dni", pymongo.ASCENDING))

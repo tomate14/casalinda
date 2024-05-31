@@ -28,6 +28,7 @@ def get_pagos(idPedido):
     for pago in pagos:
         pago['_id'] = str(pago['_id'])
     return jsonify(pagos), 200
+
 @pagos_bp.route('/pago/<string:idPago>', methods=['DELETE'])
 def delete_pagos(idPago):
     db = obtener_conexion_db()
@@ -87,6 +88,7 @@ def create_pago():
         resultado = coleccion_pagos.insert_one(nuevo_pago)
         nuevo_pago["_id"] = str(resultado.inserted_id)
         return jsonify(nuevo_pago), 201
+        
 # Servicios de caja
 @pagos_bp.route('/pago/caja/<string:fechaInicio>/<string:fechaFin>', methods=['GET'])
 def get_pagos_por_fecha(fechaInicio, fechaFin):
