@@ -1,0 +1,38 @@
+version: '3.9'
+
+services:
+  mongodb:
+    image: maxiroselli/casalinda:mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - /c/casalinda/datos:/data/db
+
+  flask:
+    image: maxiroselli/casalinda:casalinda-flask
+    container_name: flask_app
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/pedidos
+    volumes:
+      - /c/casalinda/imagenes:/data/imagenes
+
+  angular:
+    image: maxiroselli/casalinda:casalinda-angular
+    container_name: angular_app
+    ports:
+      - "4200:4200"
+    depends_on:
+      - flask
+
+  backup:
+    image: maxiroselli/casalinda:casalinda-backup
+    container_name: backup_mongodb
+    volumes:
+      - /c/casalinda/buckup/data:/backup
+    depends_on:
+      - mongodb

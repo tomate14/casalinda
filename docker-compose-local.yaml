@@ -20,6 +20,8 @@ services:
       - mongodb
     environment:
       - MONGO_URI=mongodb://mongodb:27017/pedidos
+    volumes:
+      - C:\casalinda\imagenes:/data/imagenes
 
   angular:
     build:

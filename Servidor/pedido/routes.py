@@ -49,6 +49,20 @@ def obtener_pedidos():
     
     return jsonify(pedidos), 200
 
+@pedido_bp.route('/pedido/<string:idPedido>', methods=['GET'])
+def get_pedido_por_id(idPedido):
+    db = obtener_conexion_db()
+
+    pedido = db['pedidos'].find_one({"_id": ObjectId(idPedido)})
+    
+    if pedido is None:
+        logging.warning('Pedido %s no encontrado', idPedido)
+        return jsonify({'message': 'Pedido no encontrado'}), 404
+
+    logging.info('Pedido %s ', pedido)
+    pedido['_id'] = str(pedido['_id'])  # Convertir ObjectId a string antes de devolver la respuesta
+    return jsonify(pedido), 200
+
 @pedido_bp.route('/pedido/<int:dniCliente>', methods=['GET'])
 def get_pedidos_por_dniCliente(dniCliente):
     db = obtener_conexion_db()
