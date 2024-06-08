@@ -8,9 +8,6 @@ from flask_cors import CORS
 import pymongo
 
 import logging
-# Configuración de logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Agrega el directorio del paquete cliente al PYTHONPATH
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'cliente')))
@@ -31,65 +28,6 @@ def obtener_conexion_db():
 # Servicio GET para /pedido
 #@pedido_bp.route('/pedido/<int:pageNumber>/<int:pageLimit>', methods=['GET'])
 #def obtener_pedidos(pageNumber, pageLimit):
-@pedido_bp.route('/pedido', methods=['GET'])
-def obtener_pedidos():
-    db = obtener_conexion_db()
-    coleccion_pedidos = db['pedidos']
-    coleccion_clientes = db['clientes']
-
-    pedidos = list(coleccion_pedidos.find().sort("fechaPedido", pymongo.DESCENDING))
-    clientes = list(coleccion_clientes.find().sort("dni", pymongo.ASCENDING))
-    for cliente in clientes:
-        cliente['_id'] = str(cliente['_id'])
-    for pedido in pedidos:
-        pedido['_id'] = str(pedido['_id'])
-        cliente = next((c for c in clientes if c['dni'] == pedido['dniCliente']), None)
-        if cliente:
-            pedido['nombreCliente'] = cliente['nombre']
-    
-    return jsonify(pedidos), 200
-
-@pedido_bp.route('/pedido/<string:idPedido>', methods=['GET'])
-def get_pedido_por_id(idPedido):
-    db = obtener_conexion_db()
-
-    pedido = db['pedidos'].find_one({"_id": ObjectId(idPedido)})
-    
-    if pedido is None:
-        logging.warning('Pedido %s no encontrado', idPedido)
-        return jsonify({'message': 'Pedido no encontrado'}), 404
-
-    logging.info('Pedido %s ', pedido)
-    pedido['_id'] = str(pedido['_id'])  # Convertir ObjectId a string antes de devolver la respuesta
-    return jsonify(pedido), 200
-
-@pedido_bp.route('/pedido/<int:dniCliente>', methods=['GET'])
-def get_pedidos_por_dniCliente(dniCliente):
-    db = obtener_conexion_db()
-    pedidos = list(db['pedidos'].find({"dniCliente": dniCliente}).sort("fechaPedido", pymongo.DESCENDING))
-    
-    for pedido in pedidos:
-        pedido['_id'] = str(pedido['_id'])
-    return jsonify(pedidos), 200
-
-@pedido_bp.route('/pedido/tipo-pedido/<int:tipoPedido>', methods=['GET'])
-def get_pedidos_por_tipo_pedido(tipoPedido):
-    db = obtener_conexion_db()
-    pedidos = list(db['pedidos'].find({"tipoPedido": tipoPedido}).sort("fechaPedido", pymongo.DESCENDING))
-    clientes = list(db['clientes'].find().sort("dni", pymongo.ASCENDING))
-    
-    for cliente in clientes:
-        cliente['_id'] = str(cliente['_id'])
-
-    for pedido in pedidos:
-        pedido['_id'] = str(pedido['_id'])
-        logging.info('Pedido  %s', pedido)
-        cliente = next((c for c in clientes if c['dni'] == pedido['dniCliente']), None)
-        logging.info('Cliente  %s', cliente)
-        if cliente:
-            pedido['nombreCliente'] = cliente['nombre']
-
-    return jsonify(pedidos), 200
 
 # Servicio POST para /pedido
 @pedido_bp.route('/pedido', methods=['POST'])
@@ -167,6 +105,77 @@ def get_pedidos_vencidos(fechaDesde, tipoPedido):
         if cliente:
             pedido['nombreCliente'] = cliente['nombre']
 
+    return jsonify(pedidos), 200
+
+@pedido_bp.route('/pedido', methods=['GET'])
+def get_pedidos_filtrados():
+    db = obtener_conexion_db()
+    coleccion_pedidos = db['pedidos']
+
+    # Construir el filtro de consulta basado en los parámetros de consulta proporcionados
+    filtros = {}
+    logging.info('Query params: %s', request.args)
+    if 'id' in request.args:
+       try:
+          filtros['_id'] = ObjectId(request.args['id'])
+       except Exception as e:
+          logging.warning('ID no válido: %s', request.args['id'])
+          return jsonify({'message': 'ID no válido'}), 400
+
+    if 'estadoEnvio' in request.args:
+        filtros['estadoEnvio'] = int(request.args['estadoEnvio'])
+    
+    if 'tipoPedido' in request.args:
+        filtros['tipoPedido'] = int(request.args['tipoPedido'])
+    
+    if 'estado' in request.args:
+        filtros['estado'] = request.args['estado']
+    
+    if 'dniCliente' in request.args:
+        filtros['dniCliente'] = int(request.args['dniCliente'])
+    
+    if 'fechaDesde' in request.args or 'fechaHasta' in request.args:
+        try:
+            fecha_filtro = {}
+            if 'fechaDesde' in request.args:
+                fecha_filtro['$gte'] = request.args['fechaDesde']
+            if 'fechaHasta' in request.args:
+                fecha_filtro['$lt'] = request.args['fechaHasta']
+            filtros['fechaPedido'] = fecha_filtro
+        except Exception as e:
+            logging.warning('Fecha no válida: %s', e)
+            return jsonify({'message': 'Fecha no válida'}), 400
+
+    logging.info('Filtros a aplicar: %s', filtros)
+    pedidos = list(coleccion_pedidos.find(filtros).sort("fechaPedido", pymongo.DESCENDING))
+    
+    if not pedidos:
+        return jsonify({'message': 'No se encontraron pedidos con los filtros proporcionados'}), 404
+    
+    filtroCliente = {}
+    if 'nombreCliente' in request.args:
+        regex = {'$regex': request.args['nombreCliente'], '$options': 'i'}  # 'i' para insensible a mayúsculas/minúsculas
+        filtroCliente = {'nombre': regex}
+
+    logging.info('filtroCliente: %s', filtroCliente)
+    clientes = list(db['clientes'].find(filtroCliente).sort("dni", pymongo.ASCENDING))
+    
+    for cliente in clientes:
+        cliente['_id'] = str(cliente['_id'])
+    
+    logging.info('Clientes: %s', clientes)
+
+    if 'nombreCliente' in request.args:
+        pedidos = [pedido for pedido in pedidos if any(cliente['dni'] == pedido['dniCliente'] for cliente in clientes)]
+
+    for pedido in pedidos:
+        pedido['_id'] = str(pedido['_id'])
+        logging.info('Pedido  %s', pedido)
+        cliente = next((c for c in clientes if c['dni'] == pedido['dniCliente']), None)
+        logging.info('Cliente  %s', cliente)
+        if cliente:
+            pedido['nombreCliente'] = cliente['nombre']
+    
     return jsonify(pedidos), 200
 
 # Esto permit
