@@ -65,6 +65,7 @@ def cierre_caja(fechaInicio, fechaFin):
 
     contado = 0
     tarjeta = 0
+    transferencia = 0
     cuentaDni = 0
     ingresos = 0
     gastos = 0
@@ -79,6 +80,8 @@ def cierre_caja(fechaInicio, fechaFin):
             tarjeta += valor
         elif forma_pago == 3:
             cuentaDni += valor
+        elif forma_pago == 4:
+            transferencia += valor
         
         if valor < 0:
             gastos += -valor
@@ -90,6 +93,7 @@ def cierre_caja(fechaInicio, fechaFin):
         "contado": contado,
         "tarjeta": tarjeta,
         "cuentaDni": cuentaDni,
+        "transferencia": transferencia,
         "gastos": gastos,
         "ingresos": ingresos - gastos
     }
