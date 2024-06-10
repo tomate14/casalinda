@@ -105,7 +105,7 @@ def get_pagos_por_fecha(fechaInicio, fechaFin):
             "$gte": fechaInicio,
             "$lt": fechaFin
         }
-    }).sort("fechaPago", pymongo.ASCENDING))
+    }).sort("fechaPago", pymongo.DESCENDING))
 
     for pago in pagos:
         pago['_id'] = str(pago['_id'])

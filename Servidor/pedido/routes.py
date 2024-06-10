@@ -42,7 +42,19 @@ def crear_pedido():
     db = obtener_conexion_db()
     coleccion_pedidos = db['pedidos']
     resultado = coleccion_pedidos.insert_one(nuevo_pedido)
+    
+    cliente = db['clientes'].find_one({"dni":nuevo_pedido["dniCliente"]})
+
+    if not nuevo_pedido:
+        return jsonify({"message": "No se encontro el cliente asociado. Darlo de alta"}), 400
+
+    cliente['_id'] = str(cliente['_id'])
+
     nuevo_pedido["_id"] = str(resultado.inserted_id)
+    nuevo_pedido["nombreCliente"] = cliente["nombre"]
+
+    logging.info('nuevo_pedido: %s', nuevo_pedido)
+
     return jsonify(nuevo_pedido), 201
 
 # Servicio DELETE para eliminar envíos por idpedido
@@ -78,9 +90,11 @@ def actualizar_pedido(idPedido):
 
     # Actualizar el envío por idPedido
     resultado = coleccion_pedidos.update_one({"_id": object_id}, {"$set": data})
-
+    logging.info('resultado: %s', resultado)
     # Verificar si se encontró y se actualizó el envío
     if resultado.modified_count > 0:
+        pedido = coleccion_pedidos.find_one({"_id": object_id})
+        pedido['_id'] = str(pedido['_id'])
         return jsonify({"message": f"Se actualizó el envío con idPedido {idPedido}"}), 200
     else:
         return jsonify({"message": f"No se encontró el envío con idPedido {idPedido}"}), 404
