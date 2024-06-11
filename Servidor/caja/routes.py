@@ -49,8 +49,9 @@ def cierre_caja(fechaInicio, fechaFin):
     db = obtener_conexion_db()
 
     # Verificar si ya existe un cierre de caja con la misma fecha
-    if db['caja'].find_one({"fecha": fecha_fin}):
-        return jsonify({"message": "Ya existe un cierre de caja para la fecha proporcionada"}), 400
+    if db['caja'].find_one({"fecha": fechaInicio}):
+        logging.info("La caja del dia %s ya fue cerrada", fechaInicio)
+        return jsonify({"message": "Ya existe un cierre de caja para la fecha proporcionada " + fechaInicio}), 200
 
     try:
         pagos = list(db['pagos'].find({
@@ -67,26 +68,34 @@ def cierre_caja(fechaInicio, fechaFin):
     tarjeta = 0
     transferencia = 0
     cuentaDni = 0
-    ingresos = 0
+    ganancia = 0
     gastos = 0
-
+    diferencia_caja = 0
+    if not pagos:
+        logging.info("Dia sin pagos para procesar: %s", fechaInicio)
+        return jsonify({"message": "No hay entradas para cerrar la caja del dia "+fechaInicio}), 200
+        
     for pago in pagos:
         valor = pago['valor']
         forma_pago = pago['formaPago']
-        
-        if forma_pago == 1:
-            contado += valor
-        elif forma_pago == 2:
-            tarjeta += valor
-        elif forma_pago == 3:
-            cuentaDni += valor
-        elif forma_pago == 4:
-            transferencia += valor
-        
-        if valor < 0:
-            gastos += -valor
+        idPedido = pago['idPedido']
+        if idPedido != '-2' and idPedido != '-3':
+            if forma_pago == 1:
+                contado += valor
+            elif forma_pago == 2:
+                tarjeta += valor
+            elif forma_pago == 3:
+                cuentaDni += valor
+            elif forma_pago == 4:
+                transferencia += valor
+            
+            if valor < 0:
+                gastos += -valor
+            else:
+                ganancia += valor
         else:
-            ingresos += valor
+            diferencia_caja += valor
+            logging.info("No se contempla el movimiento de caja: %s", pago)
 
     cierre_caja_doc = {
         "fecha": fecha_inicio,
@@ -95,7 +104,7 @@ def cierre_caja(fechaInicio, fechaFin):
         "cuentaDni": cuentaDni,
         "transferencia": transferencia,
         "gastos": gastos,
-        "ingresos": ingresos - gastos
+        "ganancia": ganancia - gastos
     }
 
     try:
@@ -106,8 +115,8 @@ def cierre_caja(fechaInicio, fechaFin):
         logging.error("Error al insertar el documento en la colección 'caja': %s", str(e))
         return jsonify({"message": "Error al guardar el cierre de caja"}), 500
 
-
-    return jsonify({"message": f"Cierre de caja exitoso"}), 200
+    cierre_caja_doc["diferencia_caja"] = diferencia_caja
+    return jsonify(cierre_caja_doc), 200
 
 @caja_bp.route('/caja/ultima-cerrada', methods=['GET'])
 def get_caja_no_cerrada():
