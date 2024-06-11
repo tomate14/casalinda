@@ -121,6 +121,62 @@ def get_pedidos_vencidos(fechaDesde, tipoPedido):
 
     return jsonify(pedidos), 200
 
+@pedido_bp.route('/pedido/informe-deuda', methods=['GET'])
+def get_deuda_pedido():
+    db = obtener_conexion_db()
+    coleccion_pedidos = db['pedidos']
+    coleccion_pagos = db['pagos']
+    coleccion_cliente = db['clientes']
+
+    # Construir el filtro de consulta basado en los parámetros de consulta proporcionados
+
+    logging.info('Query params: %s', request.args)
+    if 'id' in request.args:
+       try:
+          object_id = ObjectId(request.args['id'])
+       except Exception as e:
+          logging.warning('ID no válido: %s', request.args['id'])
+          return jsonify({'message': 'ID no válido'}), 400
+    
+    pedido = coleccion_pedidos.find_one({"_id": object_id})
+    if not pedido:
+        logging.error('El pedido %s no existe.', object_id)
+        return jsonify({'message': 'ID no válido'}), 400
+    
+    pedido['_id'] = str(pedido['_id'])
+    logging.info('Pedido a procesar: %s', pedido)
+
+    
+    cliente = coleccion_cliente.find_one({"dni": pedido["dniCliente"]})
+
+    if not cliente:
+        logging.error('El cliente %s no existe.', pedido["dniCliente"])
+        return jsonify({'message': 'No se puede realizar la accion'}), 400
+    logging.info('Cliente: %s', cliente)
+
+    deuda_cliente = {        
+        "nombreCliente": cliente["nombre"],
+        "telefonoCliente": cliente["telefono"],
+        "emailCliente": cliente["email"],
+        "idPedido": request.args['id']        
+    }
+
+    pagos = list(coleccion_pagos.find({"idPedido": request.args['id']}).sort("fechaPago", pymongo.DESCENDING))
+    logging.info('Pagos encontrados: %s', pagos)
+    suma_pagos = 0
+    for pago in pagos:
+        pago['_id'] = str(pago['_id'])
+        suma_pagos += pago['valor']
+
+    deuda_cliente["saldoRestante"] = pedido["total"] - suma_pagos
+    
+    if pagos:
+        deuda_cliente["fechaUltimoPago"] = pagos[0]["fechaPago"]
+        deuda_cliente["montoUltimoPago"] = pagos[0]["valor"]
+
+    
+    return jsonify(deuda_cliente), 200
+
 @pedido_bp.route('/pedido', methods=['GET'])
 def get_pedidos_filtrados():
     db = obtener_conexion_db()
@@ -191,6 +247,7 @@ def get_pedidos_filtrados():
             pedido['nombreCliente'] = cliente['nombre']
     
     return jsonify(pedidos), 200
+
 
 # Esto permit
 if __name__ == 'pedidoservice':
