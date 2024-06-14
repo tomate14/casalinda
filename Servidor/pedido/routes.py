@@ -52,6 +52,7 @@ def crear_pedido():
 
     nuevo_pedido["_id"] = str(resultado.inserted_id)
     nuevo_pedido["nombreCliente"] = cliente["nombre"]
+    nuevo_pedido["telefonoCliente"] = cliente["telefono"]
 
     logging.info('nuevo_pedido: %s', nuevo_pedido)
 
@@ -245,6 +246,7 @@ def get_pedidos_filtrados():
         logging.info('Cliente  %s', cliente)
         if cliente:
             pedido['nombreCliente'] = cliente['nombre']
+            pedido['telefonoCliente'] = cliente['telefono']
     
     return jsonify(pedidos), 200
 

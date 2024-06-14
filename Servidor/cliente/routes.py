@@ -52,6 +52,12 @@ def create_cliente():
     coleccion_clientes = db['clientes']
     resultado = coleccion_clientes.insert_one(nuevo_cliente)
     nuevo_cliente["_id"] = str(resultado.inserted_id)
+
+    # Obtener lista de deudores
+    dni_deudores = get_clientes_deudores()
+
+    nuevo_cliente['esDeudor'] = nuevo_cliente['dni'] in dni_deudores
+
     return jsonify(nuevo_cliente), 201
 
 @cliente_bp.route('/cliente/<string:idCliente>', methods=['PUT'])
@@ -73,7 +79,12 @@ def update_cliente(idCliente):
     # Obtener el cliente actualizado
     cliente_actualizado = coleccion_clientes.find_one({"_id": ObjectId(idCliente)})
     cliente_actualizado['_id'] = str(cliente_actualizado['_id'])  # Convertir ObjectId a string antes de devolver la respuesta
-    
+
+    # Obtener lista de deudores
+    dni_deudores = get_clientes_deudores()
+
+    cliente_actualizado['esDeudor'] = cliente_actualizado['dni'] in dni_deudores
+
     return jsonify(cliente_actualizado), 200
     
 def get_clientes_deudores():

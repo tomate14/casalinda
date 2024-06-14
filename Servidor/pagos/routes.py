@@ -27,6 +27,60 @@ def get_pagos(idPedido):
     
     for pago in pagos:
         pago['_id'] = str(pago['_id'])
+    
+    respuesta = {
+        "pagos": pagos
+    }
+
+    try:
+        object_id = ObjectId(idPedido)
+    except Exception as e:
+        logging.warning('ID no válido: %s', idPedido)
+        return jsonify({'message': 'ID no válido'}), 400
+    
+    pedido = db['pedidos'].find_one({"_id": object_id})
+    if not pedido:
+        logging.error('El pedido %s no existe.', object_id)
+        return jsonify({'message': 'ID no válido'}), 400
+    
+    pedido['_id'] = str(pedido['_id'])
+    logging.info('Pedido a procesar: %s', pedido)
+
+    cliente = db['clientes'].find_one({"dni": pedido["dniCliente"]})
+
+    if not cliente:
+        logging.error('El cliente %s no existe.', pedido["dniCliente"])
+        return jsonify({'message': 'No se puede realizar la accion'}), 400
+
+    logging.info('Cliente: %s', cliente)
+
+    respuesta["nombreCliente"] = cliente["nombre"]
+    respuesta["telefonoCliente"] = cliente["telefono"]
+    respuesta["emailCliente"] = cliente["email"]
+
+    return jsonify(respuesta), 200
+
+# Servicios de caja
+@pagos_bp.route('/pago/caja/<string:fechaInicio>/<string:fechaFin>', methods=['GET'])
+def get_pagos_por_fecha(fechaInicio, fechaFin):
+    try:
+       
+        logger.info('Fecha inicio: %s', fechaInicio)
+        logger.info('Fecha fin: %s', fechaFin)
+    except ValueError:
+        return jsonify({"message": "Fecha no válida"}), 400
+
+    db = obtener_conexion_db()
+    pagos = list(db['pagos'].find({
+        "fechaPago": {
+            "$gte": fechaInicio,
+            "$lt": fechaFin
+        }
+    }).sort("fechaPago", pymongo.DESCENDING))
+
+    for pago in pagos:
+        pago['_id'] = str(pago['_id'])
+    
     return jsonify(pagos), 200
 
 @pagos_bp.route('/pago/<string:idPago>', methods=['DELETE'])
@@ -89,29 +143,6 @@ def create_pago():
         nuevo_pago["_id"] = str(resultado.inserted_id)
         return jsonify(nuevo_pago), 201
         
-# Servicios de caja
-@pagos_bp.route('/pago/caja/<string:fechaInicio>/<string:fechaFin>', methods=['GET'])
-def get_pagos_por_fecha(fechaInicio, fechaFin):
-    try:
-       
-        logger.info('Fecha inicio: %s', fechaInicio)
-        logger.info('Fecha fin: %s', fechaFin)
-    except ValueError:
-        return jsonify({"message": "Fecha no válida"}), 400
-
-    db = obtener_conexion_db()
-    pagos = list(db['pagos'].find({
-        "fechaPago": {
-            "$gte": fechaInicio,
-            "$lt": fechaFin
-        }
-    }).sort("fechaPago", pymongo.DESCENDING))
-
-    for pago in pagos:
-        pago['_id'] = str(pago['_id'])
-    
-    return jsonify(pagos), 200
-
 @pagos_bp.route('/pago/<string:idPago>', methods=['PUT'])
 def update_pago(idPago):
     pago_actualizado = request.get_json()
