@@ -18,6 +18,8 @@ from cliente.routes import get_all_clientes
 
 pedido_bp = Blueprint('pedido', __name__)
 
+pedido = MongoClient(os.getenv("MONGO_URI"))
+db = pedido['pedidos']
 # Configuración de la base de datos
 def obtener_conexion_db():
     #pedido = MongoClient('mongodb://mongodb:27017/')
@@ -39,8 +41,13 @@ def crear_pedido():
     if "dniCliente" not in nuevo_pedido:
         return jsonify({"message": "Datos incompletos"}), 400
 
-    db = obtener_conexion_db()
+    #db = obtener_conexion_db()
     coleccion_pedidos = db['pedidos']
+
+    numerador = obtener_siguiente_numeracion(db)
+    index = numerador["numeroComprobante"]
+    nuevo_pedido["numeroComprobante"] = formatear_numero(index)
+
     resultado = coleccion_pedidos.insert_one(nuevo_pedido)
     
     cliente = db['clientes'].find_one({"dni":nuevo_pedido["dniCliente"]})
@@ -56,12 +63,14 @@ def crear_pedido():
 
     logging.info('nuevo_pedido: %s', nuevo_pedido)
 
+    actualizar_numeracion(db, numerador, index+1)
+
     return jsonify(nuevo_pedido), 201
 
 # Servicio DELETE para eliminar envíos por idpedido
 @pedido_bp.route('/pedido/<string:idPedido>', methods=['DELETE'])
 def eliminar_pedidos_por_idpedido(idPedido):
-    db = obtener_conexion_db()
+    #db = obtener_conexion_db()
     coleccion_pedidos = db['pedidos']
     resultado = coleccion_pedidos.delete_many({"idPedido": idPedido, "estado":"COMPLETO"})
     if resultado.deleted_count > 0:
@@ -82,7 +91,7 @@ def actualizar_pedido(idPedido):
         return jsonify({"message": f"ID de pago no válido: {idPedido}"}), 400
 
     # Conectar a la base de datos
-    db = obtener_conexion_db()
+    #db = obtener_conexion_db()
     coleccion_pedidos = db['pedidos']
 
     # Eliminar el campo _id del diccionario de datos si está presente
@@ -103,7 +112,7 @@ def actualizar_pedido(idPedido):
 @pedido_bp.route('/pedido/pedidos-vencidos/<string:fechaDesde>/<int:tipoPedido>', methods=['GET'])
 def get_pedidos_vencidos(fechaDesde, tipoPedido):
     
-    db = obtener_conexion_db()
+    #db = obtener_conexion_db()
     logging.info(f"Fecha desde {fechaDesde}")
     pedidos = list(db['pedidos'].find({"fechaPedido": {"$lt": fechaDesde}, "estado":"PENDIENTE", "tipoPedido": tipoPedido }).sort("fechaPedido", pymongo.ASCENDING))
     logging.info("pedidos {pedidos}")
@@ -124,7 +133,7 @@ def get_pedidos_vencidos(fechaDesde, tipoPedido):
 
 @pedido_bp.route('/pedido/informe-deuda', methods=['GET'])
 def get_deuda_pedido():
-    db = obtener_conexion_db()
+    #db = obtener_conexion_db()
     coleccion_pedidos = db['pedidos']
     coleccion_pagos = db['pagos']
     coleccion_cliente = db['clientes']
@@ -180,7 +189,7 @@ def get_deuda_pedido():
 
 @pedido_bp.route('/pedido', methods=['GET'])
 def get_pedidos_filtrados():
-    db = obtener_conexion_db()
+    #db = obtener_conexion_db()
     coleccion_pedidos = db['pedidos']
 
     # Construir el filtro de consulta basado en los parámetros de consulta proporcionados
@@ -250,6 +259,53 @@ def get_pedidos_filtrados():
     
     return jsonify(pedidos), 200
 
+@pedido_bp.route('/pedido/sin-numero', methods=['GET'])
+def obtener_sin_nroPedido():
+    #db = obtener_conexion_db()
+    coleccion_pedidos = db['pedidos']
+    logging.info('Iniciando Sin numero ...')
+    # Query para obtener documentos sin el atributo 'nroPedido'
+    documentos = list(coleccion_pedidos.find())
+    logging.info('After find ... %s', documentos)
+    
+    numerador = obtener_siguiente_numeracion(db)
+    index = numerador["numeroComprobante"]
+    
+    for documento in documentos:
+        #documento['_id'] = str(documento['_id'])
+        documento['numeroComprobante'] = formatear_numero(index)
+        # Eliminar el campo _id del diccionario de datos si está presente
+        object_id = ObjectId(documento['_id'])
+        if '_id' in documento:
+            del documento['_id']
+        # Actualizar el envío por idPedido
+        resultado = db['pedidos'].update_one({"_id": object_id}, {"$set": documento})
+       
+        # Verificar si se encontró y se actualizó el envío
+        if resultado.modified_count > 0:
+            logging.info('Pedido actualizado %s', documento)
+        else:
+            logging.info('No se pudo actualizar %s', documento)
+        index += 1
+
+    actualizar_numeracion(db, numerador, index)
+    logging.info('documentos  %s', documentos)
+    return jsonify(documentos)
+
+def obtener_siguiente_numeracion(db):
+    coleccion_comprobantes = db['numeracion']
+    contador = coleccion_comprobantes.find_one({"tipoComprobante": 1})
+    logging.info('After find contador ... %s', contador)
+    return contador
+
+def actualizar_numeracion(db, numerador, index):
+    numerador["numeroComprobante"] = index
+    db['numeracion'].update_one({"_id": numerador["_id"]}, {"$set": numerador})
+
+def formatear_numero(numero):
+    """Formatea un número en el formato XXXX-XXXX con ceros a la izquierda."""
+    logging.info('Formateando numeros ...')
+    return f"{numero:08}"
 
 # Esto permit
 if __name__ == 'pedidoservice':
