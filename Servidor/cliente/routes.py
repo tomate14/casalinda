@@ -50,6 +50,13 @@ def create_cliente():
 
     db = obtener_conexion_db()
     coleccion_clientes = db['clientes']
+    cliente = coleccion_clientes.find_one({"dni": nuevo_cliente['dni']})
+
+    if cliente:
+        logging.info("Cliente ya existe")
+        cliente['_id'] = str(cliente['_id'])
+        return jsonify(cliente), 404
+
     resultado = coleccion_clientes.insert_one(nuevo_cliente)
     nuevo_cliente["_id"] = str(resultado.inserted_id)
 
