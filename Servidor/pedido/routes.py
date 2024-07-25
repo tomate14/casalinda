@@ -213,7 +213,11 @@ def get_pedidos_filtrados():
     
     if 'dniCliente' in request.args:
         filtros['dniCliente'] = int(request.args['dniCliente'])
-    
+
+    if 'numeroComprobante' in request.args:
+        numero_comprobante = request.args['numeroComprobante']
+        filtros['numeroComprobante'] = {'$regex': numero_comprobante, '$options': 'i'}
+
     if 'fechaDesde' in request.args or 'fechaHasta' in request.args:
         try:
             fecha_filtro = {}
@@ -226,8 +230,13 @@ def get_pedidos_filtrados():
             logging.warning('Fecha no válida: %s', e)
             return jsonify({'message': 'Fecha no válida'}), 400
 
+    # Verificar el parámetro de ordenación
+    orden_fecha = pymongo.DESCENDING
+    if 'ordenFecha' in request.args and request.args['ordenFecha'] == '1':
+        orden_fecha = pymongo.ASCENDING
+
     logging.info('Filtros a aplicar: %s', filtros)
-    pedidos = list(coleccion_pedidos.find(filtros).sort("fechaPedido", pymongo.DESCENDING))
+    pedidos = list(coleccion_pedidos.find(filtros).sort("fechaPedido", orden_fecha))
     
     if not pedidos:
         return jsonify({'message': 'No se encontraron pedidos con los filtros proporcionados'}), 404
