@@ -29,11 +29,23 @@ def get_cliente(dni):
 @cliente_bp.route('/cliente', methods=['GET'])
 def get_all_clientes():
     db = obtener_conexion_db()
-    clientes = list(db['clientes'].find())
+
+    filtros = {}
+    logging.info('Query params: %s', request.args)
+
+    if 'dni' in request.args:
+        filtros['dni'] = int(request.args['dni'])
+    if 'nombre' in request.args:
+        regex = {'$regex': request.args['nombre'], '$options': 'i'}  # 'i' para insensible a mayúsculas/minúsculas
+        filtros = {'nombre': regex}
+    if 'tipoUsuario' in request.args:
+        filtros['tipoUsuario'] = int(request.args['tipoUsuario'])
+
+    clientes = list(db['clientes'].find(filtros))
 
     # Obtener lista de deudores
     dni_deudores = get_clientes_deudores()
-
+    logging.info('Get deudores: %s', dni_deudores)
     for cliente in clientes:
         cliente['_id'] = str(cliente['_id'])
         cliente['esDeudor'] = cliente['dni'] in dni_deudores
@@ -100,7 +112,6 @@ def get_clientes_deudores():
     
     # Buscar pedidos pendientes
     pedidos_pendientes = pedidos.find({'estado': 'PENDIENTE'})
-    
     # Obtener los DNI de los clientes deudores
     dni_deudores = [pedido['dniCliente'] for pedido in pedidos_pendientes]
     
