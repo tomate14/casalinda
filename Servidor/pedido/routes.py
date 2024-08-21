@@ -41,6 +41,13 @@ def crear_pedido():
     if "dniCliente" not in nuevo_pedido:
         return jsonify({"message": "Datos incompletos"}), 400
 
+        
+    cliente = db['clientes'].find_one({"dni":nuevo_pedido["dniCliente"]})
+    
+    if not cliente:
+        error = "Cliente no encontrado con el numero "+str(nuevo_pedido["dniCliente"])+". Darlo de alta"
+        return jsonify({"message": error}), 400
+
     #db = obtener_conexion_db()
     coleccion_pedidos = db['pedidos']
 
@@ -50,11 +57,6 @@ def crear_pedido():
 
     resultado = coleccion_pedidos.insert_one(nuevo_pedido)
     
-    cliente = db['clientes'].find_one({"dni":nuevo_pedido["dniCliente"]})
-
-    if not nuevo_pedido:
-        return jsonify({"message": "No se encontro el cliente asociado. Darlo de alta"}), 400
-
     cliente['_id'] = str(cliente['_id'])
 
     nuevo_pedido["_id"] = str(resultado.inserted_id)
