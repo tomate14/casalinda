@@ -170,7 +170,8 @@ def get_deuda_pedido():
         "nombreCliente": cliente["nombre"],
         "telefonoCliente": cliente["telefono"],
         "emailCliente": cliente["email"],
-        "idPedido": request.args['id']        
+        "idPedido": request.args['id'],
+        "pedido": pedido        
     }
 
     pagos = list(coleccion_pagos.find({"idPedido": request.args['id']}).sort("fechaPago", pymongo.DESCENDING))
